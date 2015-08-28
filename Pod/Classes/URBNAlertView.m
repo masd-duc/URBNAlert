@@ -14,6 +14,7 @@
 #import <URBNConvenience/UIView+URBNLayout.h>
 #import <URBNConvenience/URBNMacros.h>
 #import <URBNConvenience/URBNTextField.h>
+#import "PureLayout.h"
 
 @implementation URBNAlertActionButton
 
@@ -163,40 +164,49 @@ static NSInteger const kURBNAlertViewHeightPadding = 80.f;
         self.buttons = [btns copy];
         self.sectionCount++;
         if (self.buttons.count == 1) {
-            [buttonContainer addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-btnLeftMargin-[btnOne]-btnRightMargin-|" options:0 metrics:metrics views:@{@"btnOne" : self.buttons.firstObject}]];
-            [buttonContainer addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-btnTopMargin-[btnOne(btnH)]-btnBottomMargin-|" options:0 metrics:metrics views:@{@"btnOne" : self.buttons.firstObject}]];
+            self.sectionCount++;
+            [self.buttons.firstObject
+             autoPinEdgesToSuperviewEdgesWithInsets:self.alertStyler.buttonMarginEdgeInsets];
         }
-        else if (self.buttons.count == 2 && !self.alertStyler.useVerticalLayoutForTwoButtons.boolValue) {
-            [buttonContainer addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-btnLeftMargin-[btnOne]-btnRightMargin-[btnTwo(==btnOne)]-btnRightMargin-|" options:0 metrics:metrics views:@{@"btnOne" : self.buttons.firstObject, @"btnTwo" : self.buttons[1]}]];
-            [buttonContainer addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-btnTopMargin-[btnOne(btnH)]-btnBottomMargin-|" options:0 metrics:metrics views:@{@"btnOne" : self.buttons.firstObject}]];
-            [buttonContainer addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|-btnTopMargin-[btnTwo(btnH)]-btnBottomMargin-|" options:0 metrics:metrics views:@{@"btnTwo" : self.buttons[1]}]];
-        }
-        else {
-            NSMutableDictionary *viewsDictionary = [NSMutableDictionary new];
-            NSMutableString *verticalConstraintsFormat = [NSMutableString stringWithString:@"V:|"];
-            for (int i = 0; i < self.buttons.count; i++) {
-                NSString *buttonName = [NSString stringWithFormat:@"btn%d", i];
-                [viewsDictionary setValue:self.buttons[i] forKey:buttonName];
-                if ([separators count]) {
-                    NSString *separatorName = [NSString stringWithFormat:@"spr%d", i];
-                    [verticalConstraintsFormat appendFormat:@"[%@(sprHeight)]-btnTopMargin-", separatorName];
-                    [viewsDictionary setValue:separators[i] forKey:separatorName];
-                    [buttonContainer addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-btnLeftMargin-[separator]-btnRightMargin-|" options:0 metrics:metrics views:@{@"separator" : separators[i]}]];
+        else if (self.buttons.count == 2) {
+            self.sectionCount++;
+            [self.buttons.firstObject
+             autoPinEdgesToSuperviewEdgesWithInsets:self.alertStyler.buttonMarginEdgeInsets
+             excludingEdge:ALEdgeRight];
+            [self.buttons.lastObject
+             autoPinEdge:ALEdgeLeft
+             toEdge:ALEdgeRight
+             ofView:self.buttons.firstObject
+             withOffset:MIN(self.alertStyler.buttonMarginEdgeInsets.left, self.alertStyler.buttonMarginEdgeInsets.right)];
+            [self.buttons.lastObject
+             autoPinEdgesToSuperviewEdgesWithInsets:self.alertStyler.buttonMarginEdgeInsets
+             excludingEdge:ALEdgeLeft];
+            [self.buttons.firstObject autoMatchDimension:ALDimensionWidth
+                                             toDimension:ALDimensionWidth
+                                                  ofView:self.buttons.lastObject];
+        } else if (self.buttons.count >= 3) {
+            self.sectionCount++;
+            for (int i=0; i<self.buttons.count; i++) {
+                UIButton *btn = self.buttons[i];
+                if (btn == self.buttons.firstObject) {
+                    [btn autoPinEdgesToSuperviewEdgesWithInsets:self.alertStyler.buttonMarginEdgeInsets
+                                                  excludingEdge:ALEdgeBottom];
+                } else {
+                    UIButton *prvBtn = self.buttons[i-1];
+                    [btn autoPinEdgeToSuperviewEdge:ALEdgeLeft
+                                          withInset:self.alertStyler.buttonMarginEdgeInsets.left];
+                    [btn autoPinEdgeToSuperviewEdge:ALEdgeRight
+                                          withInset:self.alertStyler.buttonMarginEdgeInsets.right];
+                    [btn autoPinEdge:ALEdgeTop
+                              toEdge:ALEdgeBottom
+                              ofView:prvBtn
+                          withOffset:self.alertStyler.buttonMarginEdgeInsets.top];
                 }
-                else if (i == 0) {
-                    [verticalConstraintsFormat appendString:@"-btnTopMargin-"];
+                if (btn == self.buttons.lastObject) {
+                    [btn autoPinEdgeToSuperviewEdge:ALEdgeBottom
+                                          withInset:self.alertStyler.buttonMarginEdgeInsets.bottom];
                 }
-                else {
-                    [verticalConstraintsFormat appendString:@"-btnVInterval-"];
-                }
-                [verticalConstraintsFormat appendFormat:@"[%@(btnH)]", buttonName];
-                [buttonContainer addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|-btnLeftMargin-[button]-btnRightMargin-|" options:0 metrics:metrics views:@{@"button" : self.buttons[i]}]];
             }
-            if (self.buttons.count) {
-                [verticalConstraintsFormat appendString:@"-btnBottomMargin-|"];
-                [buttonContainer addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:verticalConstraintsFormat options:0 metrics:metrics views:viewsDictionary]];
-            }
-            
         }
         
         [self addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[buttonContainer]|" options:0 metrics:metrics views:views]];
